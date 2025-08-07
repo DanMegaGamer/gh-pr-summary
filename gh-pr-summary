@@ -2,70 +2,124 @@
 
 require "JSON"
 
-def colorize(value, color)
-	case color
-		when :black then "\e[30m" + value.to_s + "\e[0m"
-		when :red then "\e[31m" + value.to_s + "\e[0m"
-		when :green then "\e[32m" + value.to_s + "\e[0m"
-		when :yellow then "\e[33m" + value.to_s + "\e[0m"
-		when :blue then "\e[34m" + value.to_s + "\e[0m"
-		when :magenta then "\e[35m" + value.to_s + "\e[0m"
-		when :cyan then "\e[36m" + value.to_s + "\e[0m"
-		when :white then "\e[37m" + value.to_s + "\e[0m"
-		when :bright_black then "\e[1m\e[30m" + value.to_s + "\e[0m"
-		when :bright_red then "\e[1m\e[31m" + value.to_s + "\e[0m"
-		when :bright_green then "\e[1m\e[32m" + value.to_s + "\e[0m"
-		when :bright_yellow then "\e[1m\e[33m" + value.to_s + "\e[0m"
-		when :bright_blue then "\e[1m\e[34m" + value.to_s + "\e[0m"
-		when :bright_magenta then "\e[1m\e[35m" + value.to_s + "\e[0m"
-		when :bright_cyan then "\e[1m\e[36m" + value.to_s + "\e[0m"
-		when :bright_white then "\e[1m\e[37m" + value.to_s + "\e[0m"
-		else value.to_s
-	end
-end
-
+# Loose wrapper around PullRequest JSON
 class PullRequest
+  GROUPABLE_LABELS = ["not visible", "not yet visible", "bug", "performance", "security"]
+  DEFAULT_GROUP = "other"
+  MAX_SUMMARY_LENGTH = 100
+  FALLBACK_SUMMARY = "Unknown"
+
   def initialize(id)
     @id = id
+  end
+
+  def groupable_label
+    view["labels"].find { GROUPABLE_LABELS.include?(it["name"]) }&.dig("name") || DEFAULT_GROUP
   end
 
   def title
     view["title"]
   end
 
-  def created_by
-    "#{view["author"]["login"]}"
+  def author
+    view["author"]["login"]
   end
 
   def summary
-    view["body"]
-    .gsub(/[[:space:]]+/, ' ')
-      .match(%r{What\'s this PR do\?(?<summary>.*?)\#}) {|m| m[:summary] }
+    release_notes || whats_this_do || FALLBACK_SUMMARY
+  end
+
+  private
+
+  def release_notes
+    body.match(%r{Release notes(?<release_notes>.+)\z}) { it[:release_notes]&.strip }
+  end
+
+  def whats_this_do
+    body.match(%r{What's this PR do\?(?<summary>.*?)\#}) { |m| m[:summary]&.strip&.slice(0, MAX_SUMMARY_LENGTH) }
+  end
+
+  def body
+    @body ||= view["body"].gsub(/[[:space:]]+/, " ")
   end
 
   def view
-    @view ||= JSON.parse(%x{gh pr view #{@id} --json author,body,title})
+    @view ||= JSON.parse(`gh pr view #{@id} --json author,body,title,labels`)
   end
 end
 
-puts "Summarising pull requests for #{ARGV[0]}"
+# Loop over all commits in the range and extract PR IDs
+# Look up the PR and try to extarct release note || part of summary
+# Group by predefined labels
+# Output results
+class DiffSummary
+  def initialize(range)
+    @range = range
+  end
 
-comparison = JSON.parse `gh api repos/{owner}/{repo}/compare/#{ARGV[0]}`
+  def summarise
+    puts "Summarising pull requests for #{ARGV[0]}"
+    puts "#{colorize(commits.count, :green)} commits found"
+    puts "#{colorize(pull_requests.count, :green)} merged pull requests found"
 
-commits = comparison["commits"]
+    grouped_pull_requests.each do |group, prs|
+      puts colorize(group.capitalize, :magenta)
 
-pull_request_ids = commits.filter_map do |commit|
-  commit.dig("commit", "message")&.match(%r{Merge pull request #(?<id>[0-9]+) from}) {|m| m[:id]}
+      prs.each do
+        puts colorize(it.title, :green)
+        puts colorize(it.summary, :white)
+        puts "Author: #{colorize(it.author, :blue)}"
+      end
+
+      puts "\n\n"
+    end
+  end
+
+  private
+
+  def colorize(value, color)
+    case color
+    when :black then "\e[30m" + value.to_s + "\e[0m"
+    when :red then "\e[31m" + value.to_s + "\e[0m"
+    when :green then "\e[32m" + value.to_s + "\e[0m"
+    when :yellow then "\e[33m" + value.to_s + "\e[0m"
+    when :blue then "\e[34m" + value.to_s + "\e[0m"
+    when :magenta then "\e[35m" + value.to_s + "\e[0m"
+    when :cyan then "\e[36m" + value.to_s + "\e[0m"
+    when :white then "\e[37m" + value.to_s + "\e[0m"
+    when :bright_black then "\e[1m\e[30m" + value.to_s + "\e[0m"
+    when :bright_red then "\e[1m\e[31m" + value.to_s + "\e[0m"
+    when :bright_green then "\e[1m\e[32m" + value.to_s + "\e[0m"
+    when :bright_yellow then "\e[1m\e[33m" + value.to_s + "\e[0m"
+    when :bright_blue then "\e[1m\e[34m" + value.to_s + "\e[0m"
+    when :bright_magenta then "\e[1m\e[35m" + value.to_s + "\e[0m"
+    when :bright_cyan then "\e[1m\e[36m" + value.to_s + "\e[0m"
+    when :bright_white then "\e[1m\e[37m" + value.to_s + "\e[0m"
+    else value.to_s
+    end
+  end
+
+  def commits
+    @commits ||= comparison["commits"]
+  end
+
+  def comparison
+    @comparison ||= JSON.parse `gh api repos/{owner}/{repo}/compare/#{@range}`
+  end
+
+  def grouped_pull_requests
+    pull_requests.group_by { it.groupable_label }
+  end
+
+  def pull_requests
+    @pull_requests ||= pull_request_ids.map { PullRequest.new(it) }
+  end
+
+  def pull_request_ids
+    commits.filter_map do |commit|
+      commit.dig("commit", "message")&.match(%r{Merge pull request #(?<id>[0-9]+) from}) { |m| m[:id] }
+    end
+  end
 end
 
-pull_requests = pull_request_ids.map do |id|
-  PullRequest.new(id)
-end
-
-puts "#{colorize(pull_requests.count, :green)} merged pull requests found"
-
-pull_requests.each.with_index(1) do |pull_request, index|
-  puts "#{colorize(pull_request.title, :magenta)}"
-  puts "#{pull_request.summary.nil? ? "No summary found" : pull_request.summary}"
-  puts ""
-end
+DiffSummary.new(ARGV[0]).summarise
