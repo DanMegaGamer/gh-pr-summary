@@ -60,7 +60,7 @@ class DiffSummary
   def summarise
     puts "Summarising pull requests for #{ARGV[0]}"
     puts "#{colorize(commits.count, :green)} commits found"
-    puts "#{colorize(pull_requests.count, :green)} merged pull requests found"
+    puts "#{colorize(pull_requests.count, :green)} merged pull requests found\n\n"
 
     grouped_pull_requests.each do |group, prs|
       puts colorize(group.capitalize, :magenta)
