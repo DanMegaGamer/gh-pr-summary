@@ -4,7 +4,7 @@ require "JSON"
 
 # Loose wrapper around PullRequest JSON
 class PullRequest
-  GROUPABLE_LABELS = ["not visible", "not yet visible", "bug", "performance", "security"]
+  GROUPABLE_LABELS = ["not visible", "not yet visible", "bug", "performance", "security", "visible"]
   DEFAULT_GROUP = "other"
   MAX_SUMMARY_LENGTH = 100
   FALLBACK_SUMMARY = "Unknown"
