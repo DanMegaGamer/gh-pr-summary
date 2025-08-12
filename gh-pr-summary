@@ -65,11 +65,7 @@ class DiffSummary
     grouped_pull_requests.each do |group, prs|
       puts colorize(group.capitalize, :magenta)
 
-      prs.each do
-        puts colorize(it.title, :green)
-        puts colorize(it.summary, :white)
-        puts "Author: #{colorize(it.author, :blue)}"
-      end
+      prs.each { puts colorize(it.summary, :white) }
 
       puts "\n\n"
     end
