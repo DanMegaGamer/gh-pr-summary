@@ -7,7 +7,6 @@ class PullRequest
   GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security"]
   DEFAULT_GROUP = "other"
   MAX_SUMMARY_LENGTH = 100
-  FALLBACK_SUMMARY = "Unknown"
 
   def initialize(id)
     @id = id
@@ -17,16 +16,8 @@ class PullRequest
     view["labels"].find { GROUPABLE_LABELS.include?(it["name"]) }&.dig("name") || DEFAULT_GROUP
   end
 
-  def title
-    view["title"]
-  end
-
-  def author
-    view["author"]["login"]
-  end
-
   def summary
-    release_notes || whats_this_do || FALLBACK_SUMMARY
+    release_notes || auto_release_note
   end
 
   private
@@ -35,8 +26,8 @@ class PullRequest
     body.match(%r{Release notes(?<release_notes>.+)\z}) { it[:release_notes]&.strip }
   end
 
-  def whats_this_do
-    body.match(%r{What's this PR do\?(?<summary>.*?)\#}) { |m| m[:summary]&.strip&.slice(0, MAX_SUMMARY_LENGTH) }
+  def auto_release_note
+    "#{view["title"]} | #{view.dig("author", "name")} | #(#{@id})"
   end
 
   def body
