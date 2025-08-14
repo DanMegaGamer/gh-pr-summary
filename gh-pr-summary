@@ -4,7 +4,7 @@ require "JSON"
 
 # Loose wrapper around PullRequest JSON
 class PullRequest
-  GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security"]
+  GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security", "dependencies"]
   DEFAULT_GROUP = "other"
 
   def initialize(id)
