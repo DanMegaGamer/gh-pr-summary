@@ -18,10 +18,16 @@ class PullRequest
   end
 
   def release_note
-    "#{view["title"]} | #{view.dig("author", "name")} | #(#{@id})"
+    "#{view["title"]} | #{author} | #(#{@id})"
   end
 
   private
+
+  def author
+    return "Bot" if view.dig("author", "is_bot")
+
+    view.dig("author", "name") || "Unknown"
+  end
 
   def body
     @body ||= view["body"].gsub(/[[:space:]]+/, " ")
