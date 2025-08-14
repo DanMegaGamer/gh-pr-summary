@@ -3,8 +3,10 @@
 require "JSON"
 
 # Loose wrapper around PullRequest JSON
+
+GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security", "dependencies"]
+
 class PullRequest
-  GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security", "dependencies"]
   DEFAULT_GROUP = "other"
 
   def initialize(id)
@@ -86,7 +88,7 @@ class DiffSummary
   end
 
   def grouped_pull_requests
-    pull_requests.group_by { it.groupable_label }
+    pull_requests.group_by { it.groupable_label }.slice(*GROUPABLE_LABELS)
   end
 
   def pull_requests
