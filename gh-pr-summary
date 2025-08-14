@@ -6,7 +6,6 @@ require "JSON"
 class PullRequest
   GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security"]
   DEFAULT_GROUP = "other"
-  MAX_SUMMARY_LENGTH = 100
 
   def initialize(id)
     @id = id
@@ -16,19 +15,11 @@ class PullRequest
     view["labels"].find { GROUPABLE_LABELS.include?(it["name"]) }&.dig("name") || DEFAULT_GROUP
   end
 
-  def summary
-    release_notes || auto_release_note
+  def release_note
+    "#{view["title"]} | #{view.dig("author", "name")} | #(#{@id})"
   end
 
   private
-
-  def release_notes
-    body.match(%r{Release notes(?<release_notes>.+)\z}) { it[:release_notes]&.strip }
-  end
-
-  def auto_release_note
-    "#{view["title"]} | #{view.dig("author", "name")} | #(#{@id})"
-  end
 
   def body
     @body ||= view["body"].gsub(/[[:space:]]+/, " ")
@@ -56,7 +47,7 @@ class DiffSummary
     grouped_pull_requests.each do |group, prs|
       puts colorize(group.capitalize, :magenta)
 
-      prs.each { puts colorize(it.summary, :white) }
+      prs.each { puts colorize(it.release_note, :white) }
 
       puts "\n\n"
     end
