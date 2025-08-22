@@ -4,7 +4,7 @@ require "JSON"
 
 # Loose wrapper around PullRequest JSON
 
-GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "performance", "security", "dependencies"]
+GROUPABLE_LABELS = ["visible", "not yet visible", "not visible", "bug", "other", "performance", "security", "dependencies"]
 
 class PullRequest
   DEFAULT_GROUP = "other"
